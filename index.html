@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Community Relations Office - Command Center</title>
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ios: {
+                            blue: '#007AFF', indigo: '#5856D6', purple: '#AF52DE',
+                            pink: '#FF2D55', red: '#FF3B30', orange: '#FF9500',
+                            yellow: '#FFCC00', green: '#34C759', teal: '#30B0C7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+/* ===== Backgrounds ===== */
+body.theme-dark {
+    background: linear-gradient(rgba(10, 10, 12, 0.55), rgba(10, 10, 12, 0.78)), url('assets/background.jpg') center / cover fixed;
+    color: #fff;
+}
+body.theme-light {
+    background: linear-gradient(rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.9)), url('assets/background.jpg') center / cover fixed;
+    color: #111827;
+}
+
+/* ===== iOS-style glass panels ===== */
+.glass {
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+}
+body.theme-dark .glass  { background: rgba(18, 18, 20, 0.85); border-color: rgba(255, 255, 255, 0.15); }
+body.theme-light .glass { background: rgba(255, 255, 255, 0.92); border-color: rgba(220, 220, 225, 0.8); box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.04); }
+
+body.theme-dark .bar  { background: rgba(0, 0, 0, 0.5); border-color: rgba(255, 255, 255, 0.15); }
+body.theme-light .bar { background: rgba(255, 255, 255, 0.8); border-color: rgba(0, 0, 0, 0.08); }
+
+body.theme-dark .thead  { background: rgba(0, 0, 0, 0.6); color: #fff; }
+body.theme-light .thead { background: rgba(255, 255, 255, 0.9); color: #111827; }
+
+body.theme-dark .modal-card  { background: rgba(0, 0, 0, 0.9); border-color: rgba(255, 255, 255, 0.2); }
+body.theme-light .modal-card { background: rgba(255, 255, 255, 0.96); border-color: rgba(0, 0, 0, 0.1); }
+
+/* ===== Light mode readability ===== */
+body.theme-light :is(.text-white, .text-white\/50, .text-white\/60, .text-white\/70, .text-white\/75, .text-white\/80) { color: rgba(17, 24, 39, 0.85); }
+body.theme-light :is(.bg-ios-blue, .bg-ios-green, .bg-ios-red, .bg-ios-indigo).text-white { color: #fff; }
+body.theme-light :is(.bg-black\/20, .bg-black\/30, .bg-black\/40) { background: rgba(0, 0, 0, 0.05); }
+body.theme-light :is(.border-white\/10, .border-white\/15, .border-white\/20, .border-white\/30) { border-color: rgba(0, 0, 0, 0.1); }
+body.theme-light :is(.bg-white\/10, .bg-white\/5) { background: rgba(0, 0, 0, 0.05); }
+body.theme-light .bg-white\/20 { background: rgba(0, 0, 0, 0.1); }
+body.theme-light .divide-white\/10 > * { border-color: rgba(0, 0, 0, 0.08); }
+body.theme-light select option { color: #111827; }
+body.theme-dark select option { background: #111; }
+
+/* ===== Role visibility ===== */
+body:not(.can-edit) .editor-only { display: none !important; }
+body:not(.is-admin) .admin-only { display: none !important; }
+
+/* ===== Minimal animations ===== */
+@keyframes fadeUp   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn    { from { opacity: 0; transform: scale(0.96) translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes shake    { 0%, 100% { transform: none; } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+#loginScreen > div               { animation: popIn 0.45s cubic-bezier(.2, .8, .2, 1); }
+#appContainer:not(.hidden)       { animation: fadeIn 0.35s ease-out; }
+main > section:not(.hidden)      { animation: fadeUp 0.3s ease-out; }
+.fixed.inset-0:not(.hidden)      { animation: fadeIn 0.2s ease-out; }
+.fixed.inset-0:not(.hidden) > div { animation: popIn 0.25s cubic-bezier(.2, .8, .2, 1); }
+.rows-in > tr                    { animation: fadeUp 0.3s ease-out both; }
+.rows-in > tr:nth-child(2) { animation-delay: 0.03s; } .rows-in > tr:nth-child(3) { animation-delay: 0.06s; }
+.rows-in > tr:nth-child(4) { animation-delay: 0.09s; } .rows-in > tr:nth-child(n+5) { animation-delay: 0.12s; }
+.shake                           { animation: shake 0.3s ease-in-out; }
+button                           { transition: transform 0.12s ease, background-color 0.2s, color 0.2s, opacity 0.2s; }
+button:active:not(:disabled)     { transform: scale(0.96); }
+tbody tr                         { transition: background-color 0.2s; }
+tbody tr:hover                   { background-color: rgba(127, 127, 127, 0.07); }
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { height: 4px; width: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(200, 200, 200, 0.4); border-radius: 10px; }
+
+/* ===== Print ===== */
+@media print {
+    body { background: white !important; color: black !important; }
+    .no-print { display: none !important; }
+}
+    </style>
+</head>
+<body class="theme-dark font-sans min-h-screen transition-colors duration-300">
+
+    <!-- ================= LOGIN SCREEN ================= -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="glass border rounded-3xl shadow-2xl max-w-md w-full p-8 text-white">
+            <div class="text-center mb-6 flex flex-col items-center">
+                <img src="assets/logo.png" alt="FCRO" class="w-24 h-24 object-contain mb-3 drop-shadow-xl">
+                <p class="text-[10px] tracking-[0.25em] text-ios-teal font-bold uppercase mb-1">MOL Magsaysay Maritime Academy</p>
+                <h1 class="text-xl font-extrabold tracking-tight">FLEET COMMUNITY RELATIONS</h1>
+                <p class="text-xs text-white/70 mt-1">The Lighthouse Command Center</p>
+            </div>
+
+            <button onclick="enterAsVisitor()" class="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-3 rounded-xl transition text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+                <span>👁️</span> Continue as Visitor
+            </button>
+            <p class="text-[10px] text-white/50 text-center mt-1.5">View-only access to the schedule</p>
+
+            <div class="flex items-center gap-3 my-5">
+                <div class="flex-1 h-px bg-white/20"></div>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-ios-teal">Heads Login</span>
+                <div class="flex-1 h-px bg-white/20"></div>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-white/80 mb-1.5 ml-1">Username</label>
+                    <input type="text" id="loginUsername" required autocomplete="username" autocapitalize="characters" placeholder="e.g. HEADPHOTO" class="w-full bg-black/40 border border-white/20 text-white rounded-xl px-4 py-3 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-ios-blue transition placeholder:text-white/30 placeholder:normal-case">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-white/80 mb-1.5 ml-1">Password</label>
+                    <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="Enter password" class="w-full bg-black/40 border border-white/20 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ios-blue transition placeholder:text-white/30">
+                    <p id="loginError" class="text-ios-red text-xs mt-2 hidden ml-1"></p>
+                </div>
+                <button type="submit" id="loginBtn" class="w-full bg-ios-blue hover:bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-ios-blue/30 transition text-sm uppercase tracking-wider">
+                    Authenticate
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MAIN APP ================= -->
+    <div id="appContainer" class="hidden min-h-screen flex flex-col w-full">
+
+        <header class="bar border-b py-3 px-4 lg:px-6 shadow-2xl sticky top-0 z-40 backdrop-blur-xl">
+            <div class="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-3">
+                <div class="flex items-center gap-3">
+                    <img src="assets/logo.png" alt="FCRO" class="w-11 h-11 object-contain">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="inline-block w-2 h-2 rounded-full bg-ios-green animate-pulse"></span>
+                            <p class="text-[10px] uppercase tracking-widest font-bold text-ios-teal">MOL Magsaysay Maritime Academy</p>
+                        </div>
+                        <h1 class="text-base lg:text-lg font-extrabold tracking-tight">FLEET COMMUNITY RELATIONS OFFICE</h1>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-center gap-2.5 no-print">
+                    <div class="bg-black/40 px-3 py-1.5 rounded-xl text-right shadow-inner border border-white/20">
+                        <span id="roleLabel" class="text-[9px] font-bold block uppercase tracking-widest text-ios-yellow">Visitor</span>
+                        <span id="userLabel" class="text-xs font-semibold">View only</span>
+                    </div>
+                    <div class="bg-black/40 px-3 py-1.5 rounded-xl text-right shadow-inner border border-white/20 hidden sm:block">
+                        <span class="text-[9px] font-bold block uppercase tracking-widest text-ios-teal">System Time</span>
+                        <span id="clockText" class="text-xs font-mono font-semibold">Initializing...</span>
+                    </div>
+                    <div class="bg-black/40 px-3 py-1.5 rounded-xl text-right shadow-inner border border-white/20">
+                        <span class="text-[9px] font-bold block uppercase tracking-widest text-ios-green">Calendar Updated</span>
+                        <span id="updatedText" class="text-xs font-mono font-semibold">—</span>
+                        <span id="syncStatus" class="text-[9px] block opacity-70">Connecting...</span>
+                    </div>
+
+                    <button onclick="toggleTheme()" id="themeToggleBtn" title="Toggle Theme" class="p-2 rounded-xl border border-white/20 bg-black/40 font-bold text-xs transition shadow">☀️</button>
+                    <button onclick="openPasswordModal()" title="Change my password" class="editor-only bg-ios-indigo/20 hover:bg-ios-indigo border border-ios-indigo/40 text-ios-indigo hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow">🔑</button>
+                    <button onclick="exportToPDF()" class="bg-ios-green/20 hover:bg-ios-green border border-ios-green/40 text-ios-green hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5">
+                        <span>🖨️</span> PDF
+                    </button>
+                    <button onclick="handleLogout()" id="logoutBtn" class="bg-ios-red/20 hover:bg-ios-red border border-ios-red/40 text-ios-red hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5">
+                        <span>🔒</span> <span id="logoutLabel">Exit</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 lg:px-6 py-6 flex-grow w-full space-y-5" id="printableArea">
+
+            <!-- Main tab switcher + actions -->
+            <div class="flex flex-col md:flex-row gap-3 justify-between md:items-center no-print">
+                <div class="inline-flex flex-wrap p-1 rounded-2xl border glass shadow-inner w-fit">
+                    <button onclick="switchMainTab('events')"    data-tab="events"    class="tab-btn px-5 py-2 rounded-xl font-bold text-xs transition">📅 Schedule & Events</button>
+                    <button onclick="switchMainTab('analytics')" data-tab="analytics" class="tab-btn px-5 py-2 rounded-xl font-bold text-xs transition">📊 Analytics & Overview</button>
+                    <button onclick="switchMainTab('accounts')"  data-tab="accounts"  class="tab-btn admin-only px-5 py-2 rounded-xl font-bold text-xs transition">👥 Accounts</button>
+                    <button onclick="switchMainTab('audit')"     data-tab="audit"     class="tab-btn admin-only px-5 py-2 rounded-xl font-bold text-xs transition">🧾 Audit Log</button>
+                </div>
+
+                <div class="flex gap-2 editor-only" id="eventActions">
+                    <button onclick="openImportModal()" class="bg-ios-indigo/20 hover:bg-ios-indigo border border-ios-indigo/40 text-ios-indigo hover:text-white font-bold px-4 py-2 rounded-xl shadow transition text-xs flex items-center gap-1.5">
+                        <span>📊</span> Import Sheet
+                    </button>
+                    <button onclick="openAddModal()" class="bg-ios-blue hover:bg-blue-600 text-white font-bold px-5 py-2 rounded-xl shadow-lg shadow-ios-blue/30 transition text-xs flex items-center gap-1.5">
+                        <span>➕</span> Add Event
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB: EVENTS -->
+            <section id="tab-events" class="space-y-4">
+                <div class="p-2 rounded-2xl border glass no-print">
+                    <div class="flex items-center gap-1.5 overflow-x-auto" id="monthTabsContainer"></div>
+                </div>
+
+                <div class="flex bg-black/20 p-1 rounded-xl border border-white/10 w-fit no-print">
+                    <button onclick="switchSubTab('active')"  id="subTabActiveBtn"  class="px-4 py-1.5 rounded-lg font-bold text-xs transition">Active Schedule</button>
+                    <button onclick="switchSubTab('history')" id="subTabHistoryBtn" class="px-4 py-1.5 rounded-lg font-bold text-xs transition">History Archive (<span id="historyCount">0</span>)</button>
+                </div>
+
+                <h2 id="printMonthTitle" class="hidden text-lg font-extrabold"></h2>
+
+                <div id="activeSection" class="rounded-3xl overflow-hidden shadow-2xl border glass">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="thead text-[11px] uppercase tracking-wider border-b border-white/15">
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-28">Date</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10">Scheduled Events</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-80">Functions & Duty Roster</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-48">Editor's Note</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-36">Post Time</th>
+                                    <th class="py-3.5 px-4 w-32 text-center">Status</th>
+                                    <th class="py-3.5 px-2 w-16 text-center no-print editor-only">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="eventTableBody" class="divide-y divide-white/10 text-xs"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="historySection" class="rounded-3xl overflow-hidden shadow-2xl border glass hidden">
+                    <div class="thead p-4 border-b border-white/10 font-bold text-xs flex justify-between items-center">
+                        <span class="flex items-center gap-2">📁 Completed & Published Archive</span>
+                        <span class="text-[11px] text-white/70 font-normal">Archived entries.</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="thead text-[11px] uppercase tracking-wider border-b border-white/15">
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-28">Date</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10">Scheduled Events</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-80">Functions & Duties</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-48">Editor's Note</th>
+                                    <th class="py-3.5 px-4 w-32 text-center">Status</th>
+                                    <th class="py-3.5 px-2 w-16 text-center no-print editor-only">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody" class="divide-y divide-white/10 text-xs"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: ANALYTICS -->
+            <section id="tab-analytics" class="hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div class="p-5 rounded-3xl border border-ios-blue/40 bg-ios-blue/15 backdrop-blur-xl flex items-center justify-between shadow-lg">
+                        <div>
+                            <p class="text-xs uppercase tracking-wider font-semibold text-ios-blue">Total Scheduled Events</p>
+                            <h3 id="metricActive" class="text-3xl font-black font-mono mt-1 text-white">0</h3>
+                            <p class="text-[10px] text-white/75 mt-1">Total entries in <span class="metricMonth"></span></p>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-ios-blue/30 flex items-center justify-center text-2xl">📅</div>
+                    </div>
+                    <div class="p-5 rounded-3xl border border-ios-orange/40 bg-ios-orange/15 backdrop-blur-xl flex items-center justify-between shadow-lg">
+                        <div>
+                            <p class="text-xs uppercase tracking-wider font-semibold text-ios-orange">Pending / In Progress</p>
+                            <h3 id="metricPending" class="text-3xl font-black font-mono mt-1 text-ios-orange">0</h3>
+                            <p class="text-[10px] text-white/75 mt-1">Awaiting layout or posting</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-ios-orange/30 flex items-center justify-center text-2xl">⏳</div>
+                    </div>
+                    <div class="p-5 rounded-3xl border border-ios-green/40 bg-ios-green/15 backdrop-blur-xl flex items-center justify-between shadow-lg">
+                        <div>
+                            <p class="text-xs uppercase tracking-wider font-semibold text-ios-green">Published / Posted</p>
+                            <h3 id="metricPosted" class="text-3xl font-black font-mono mt-1 text-ios-green">0</h3>
+                            <p class="text-[10px] text-white/75 mt-1">Completed media posts</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-ios-green/30 flex items-center justify-center text-2xl">✅</div>
+                    </div>
+                </div>
+
+                <div class="p-6 rounded-3xl border glass">
+                    <h4 class="text-sm font-bold uppercase tracking-wider text-ios-teal mb-4">Monthly Duty Assignment Metrics</h4>
+                    <div id="analyticsMonthlyBreakdown" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3"></div>
+                </div>
+            </section>
+
+            <!-- TAB: ACCOUNTS (admin) -->
+            <section id="tab-accounts" class="hidden space-y-4 admin-only">
+                <div class="flex flex-wrap gap-3 justify-between items-center">
+                    <div class="flex gap-3 text-xs">
+                        <span class="px-3 py-1.5 rounded-xl bg-ios-green/15 border border-ios-green/40 text-ios-green font-bold">🟢 Online: <span id="onlineCount">0</span></span>
+                        <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white/80 font-bold">Total accounts: <span id="accountCount">0</span></span>
+                    </div>
+                    <button onclick="openAccountModal()" class="bg-ios-blue hover:bg-blue-600 text-white font-bold px-5 py-2 rounded-xl shadow-lg shadow-ios-blue/30 transition text-xs">➕ Add Account</button>
+                </div>
+                <div class="rounded-3xl overflow-hidden shadow-2xl border glass">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="thead text-[11px] uppercase tracking-wider border-b border-white/15">
+                                    <th class="py-3.5 px-4 border-r border-white/10">Name</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10">Username</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-24">Role</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-52">Online Status</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-24 text-center">Access</th>
+                                    <th class="py-3.5 px-2 w-20 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountsTableBody" class="divide-y divide-white/10 text-xs"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: AUDIT LOG (admin) -->
+            <section id="tab-audit" class="hidden space-y-4 admin-only">
+                <div class="flex flex-wrap gap-2 justify-between items-center">
+                    <div class="flex flex-wrap gap-2">
+                        <input id="auditSearch" oninput="renderAudit()" placeholder="Search user, action, event..." class="bg-black/40 border border-white/20 text-white rounded-xl px-3 py-2 text-xs w-60 focus:outline-none focus:border-ios-teal">
+                        <select id="auditFilter" onchange="renderAudit()" class="bg-black/40 border border-white/20 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-ios-teal">
+                            <option value="">All actions</option>
+                            <option value="EVENT">Event changes only</option>
+                            <option value="ACCOUNT">Account changes only</option>
+                            <option value="LOG">Logins / logouts</option>
+                        </select>
+                    </div>
+                    <button onclick="loadAudit()" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 py-2 rounded-xl text-xs font-bold transition">↻ Refresh</button>
+                </div>
+                <div class="rounded-3xl overflow-hidden shadow-2xl border glass">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="thead text-[11px] uppercase tracking-wider border-b border-white/15">
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-44">When</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-40">User</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10 w-36">Action</th>
+                                    <th class="py-3.5 px-4 border-r border-white/10">Item</th>
+                                    <th class="py-3.5 px-4">What changed</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditTableBody" class="divide-y divide-white/10 text-xs"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="bar border-t text-white/70 text-center py-4 text-xs mt-auto no-print">
+            Fleet Community Relations Office Management System &copy; 2026 | The Lighthouse Official Publication
+        </footer>
+    </div>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- Event -->
+    <div id="eventModal" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="modal-card rounded-3xl max-w-xl w-full p-6 shadow-2xl border text-white max-h-[90vh] overflow-y-auto">
+            <h3 class="text-base font-bold mb-4 pb-2 border-b border-white/15 flex items-center justify-between">
+                <span id="eventModalTitle">📌 Event Specification</span>
+                <button onclick="closeModal('eventModal')" class="text-white/70 hover:text-white">✕</button>
+            </h3>
+            <form id="eventForm" onsubmit="saveEvent(event)" class="space-y-4">
+                <input type="hidden" id="eventId">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-ios-teal mb-1">Event Date (e.g., OCT 03)</label>
+                        <input type="text" id="eventDate" required placeholder="OCT 03" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-ios-teal">
+                    </div>
+                    <div class="flex items-center pt-5">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="eventPriority" class="w-4 h-4 rounded">
+                            <span class="text-xs font-bold text-ios-red">⭐ Mark as PRIORITY</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-ios-teal mb-1">Scheduled Events & Details</label>
+                    <textarea id="eventDesc" rows="2" required placeholder="GAD ORIENTATION PROGRAM" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-ios-teal"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-ios-teal mb-1">Required Functions & Duty Assignments</label>
+                    <p class="text-[10px] text-white/70 mb-2">Check the functions needed for this event and assign personnel:</p>
+                    <div id="functionsContainer" class="space-y-2 bg-black/30 p-3 rounded-2xl border border-white/10"></div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-ios-teal mb-1">Editor's Note</label>
+                    <input type="text" id="eventNote" placeholder="e.g. Layout revision pending" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-ios-teal">
+                </div>
+                <div class="bg-ios-teal/15 p-3 rounded-2xl border border-ios-teal/30">
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-ios-teal mb-1">Target Posting Schedule</label>
+                    <input type="datetime-local" id="eventPostTime" class="w-full bg-black/40 border border-white/20 text-white rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-ios-teal">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-ios-teal mb-1">Workflow Status</label>
+                    <select id="eventStatus" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-ios-teal">
+                        <option value="Pending">Pending</option>
+                        <option value="Edited">Edited / Ready</option>
+                        <option value="Posted">Posted / Done</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2 mt-6 pt-2 border-t border-white/15">
+                    <button type="button" onclick="closeModal('eventModal')" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-xs font-bold transition">Cancel</button>
+                    <button type="submit" class="bg-ios-blue hover:bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-bold transition shadow-lg shadow-ios-blue/30">Save Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Import -->
+    <div id="importModal" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="modal-card rounded-3xl max-w-lg w-full p-6 shadow-2xl border text-white">
+            <h3 class="text-base font-bold mb-2 pb-2 border-b border-white/15 flex items-center justify-between">
+                <span>📊 Google Sheets Batch Import</span>
+                <button onclick="closeModal('importModal')" class="text-white/70 hover:text-white">✕</button>
+            </h3>
+            <p class="text-xs text-white/70 mb-3">Copy raw cells directly from your Google Sheet and paste below:</p>
+            <textarea id="importRawData" rows="6" placeholder="OCT 03	GAD ORIENTATION PROGRAM	PHOTOGRAPHER: ENGANO	Pending layout" class="w-full bg-black/40 border border-white/20 rounded-xl p-3 text-xs font-mono text-ios-teal focus:outline-none focus:border-ios-teal mb-4"></textarea>
+            <div class="flex justify-between items-center pt-2 border-t border-white/15">
+                <span class="text-[10px] text-white/60">Supports tab-separated / CSV formats.</span>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeModal('importModal')" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-xs font-bold transition">Cancel</button>
+                    <button type="button" onclick="processImport()" class="bg-ios-green hover:bg-green-600 text-white px-5 py-2 rounded-xl text-xs font-bold transition shadow-lg shadow-ios-green/30">Execute Import</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account (admin) -->
+    <div id="accountModal" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="modal-card rounded-3xl max-w-md w-full p-6 shadow-2xl border text-white">
+            <h3 class="text-base font-bold mb-4 pb-2 border-b border-white/15 flex items-center justify-between">
+                <span id="accountModalTitle">👤 Account</span>
+                <button onclick="closeModal('accountModal')" class="text-white/70 hover:text-white">✕</button>
+            </h3>
+            <form onsubmit="saveAccount(event)" class="space-y-4">
+                <input type="hidden" id="accId">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-ios-teal mb-1">Full Name</label>
+                    <input type="text" id="accName" required placeholder="CDT. JUAN DELA CRUZ" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-ios-teal">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-ios-teal mb-1">Username</label>
+                    <input type="text" id="accUsername" required placeholder="HEADPHOTO" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white uppercase focus:outline-none focus:border-ios-teal">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-ios-teal mb-1">Password</label>
+                    <input type="text" id="accPassword" placeholder="" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-ios-teal">
+                    <p id="accPasswordHint" class="text-[10px] text-white/60 mt-1">Leave blank to keep the current password.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-ios-teal mb-1">Role</label>
+                        <select id="accRole" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-ios-teal">
+                            <option value="head">Head (can edit)</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center pt-5">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="accActive" class="w-4 h-4 rounded" checked>
+                            <span class="text-xs font-bold text-ios-green">Can log in</span>
+                        </label>
+                    </div>
+                </div>
+                <p id="accError" class="text-ios-red text-xs hidden"></p>
+                <div class="flex justify-end gap-2 pt-2 border-t border-white/15">
+                    <button type="button" onclick="closeModal('accountModal')" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-xs font-bold transition">Cancel</button>
+                    <button type="submit" class="bg-ios-blue hover:bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-bold transition shadow-lg shadow-ios-blue/30">Save Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change own password -->
+    <div id="passwordModal" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="modal-card rounded-3xl max-w-sm w-full p-6 shadow-2xl border text-white">
+            <h3 class="text-base font-bold mb-4 pb-2 border-b border-white/15 flex items-center justify-between">
+                <span>🔑 Change My Password</span>
+                <button onclick="closeModal('passwordModal')" class="text-white/70 hover:text-white">✕</button>
+            </h3>
+            <form onsubmit="changeMyPassword(event)" class="space-y-4">
+                <input type="password" id="pwOld" required placeholder="Current password" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-ios-teal">
+                <input type="password" id="pwNew" required minlength="6" placeholder="New password (min 6 characters)" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-ios-teal">
+                <p id="pwMsg" class="text-xs hidden"></p>
+                <div class="flex justify-end gap-2 pt-2 border-t border-white/15">
+                    <button type="button" onclick="closeModal('passwordModal')" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-xs font-bold transition">Cancel</button>
+                    <button type="submit" class="bg-ios-blue hover:bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-bold transition">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+/* =========================================================
+   Fleet Community Relations Office - Command Center
+   ========================================================= */
+
+/* ---------- Supabase connection (public keys only) ---------- */
+const SUPABASE_URL = "https://juznwkskjermvsijnunt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_TkhkkURY4MRoqxo_42WElg_uGcOKNgZ";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const AVAILABLE_FUNCTIONS = [
+    "PHOTOGRAPHER", "PHOTOEDITOR", "VIDEOGRAPHER", "VIDEO EDITOR",
+    "SCRIPT WRITER", "CORRESPONDENT", "LAYOUT ARTIST", "DIGITAL ARTIST"
+];
+const MONTHS = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
+const ONLINE_WINDOW_MS = 75 * 1000;
+
+let session = null;           // { token, username, display_name, role } or { role: 'visitor' }
+let events = [];              // rows from public.events
+let accounts = [];
+let auditRows = [];
+let currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
+if (!MONTHS.includes(currentMonth)) currentMonth = "October";
+let currentTab = 'events';
+let currentTheme = safeGet('fcro_theme') || 'dark';
+let heartbeatTimer = null, accountsTimer = null, reloadTimer = null, liveChannel = null;
+
+/* ---------- Small helpers ---------- */
+function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function safeSet(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function canEdit() { return session && (session.role === 'head' || session.role === 'admin'); }
+function isAdmin() { return session && session.role === 'admin'; }
+function fmtDateTime(d) {
+    return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function timeAgo(d) {
+    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    const m = Math.floor(s / 60); if (m < 60) return `${m} min ago`;
+    const h = Math.floor(m / 60); if (h < 24) return `${h} hr${h > 1 ? 's' : ''} ago`;
+    const days = Math.floor(h / 24); if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
+    return fmtDateTime(d);
+}
+/* Replays an entrance animation on an element (used for user-driven changes only, not live refreshes) */
+function replay(el, cls) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+}
+function animateRows() {
+    ['eventTableBody', 'historyTableBody'].forEach(id => {
+        replay($(id), 'rows-in');
+        // drop the class afterwards so live refreshes redraw without animating
+        setTimeout(() => $(id).classList.remove('rows-in'), 600);
+    });
+}
+function setSyncStatus(t) { $('syncStatus').innerText = t; }
+function closeModal(id) { $(id).classList.add('hidden'); }
+function openModal(id) { $(id).classList.remove('hidden'); }
+
+const ERROR_TEXT = {
+    BAD_LOGIN: 'Incorrect username or password.',
+    SESSION_EXPIRED: 'Your session expired. Please log in again.',
+    NOT_ADMIN: 'Admin access required.',
+    USERNAME_TAKEN: 'That username is already used.',
+    USERNAME_REQUIRED: 'Username is required.',
+    PASSWORD_REQUIRED: 'A password is required for new accounts.',
+    CANNOT_DEMOTE_SELF: 'You cannot remove your own admin access.',
+    CANNOT_DELETE_SELF: 'You cannot delete your own account.',
+    BAD_PASSWORD: 'Current password is incorrect.',
+    PASSWORD_TOO_SHORT: 'Password must be at least 6 characters.'
+};
+function errText(err) {
+    const msg = (err && err.message) || String(err);
+    const key = Object.keys(ERROR_TEXT).find(k => msg.includes(k));
+    return key ? ERROR_TEXT[key] : msg;
+}
+
+/* Call a database function; kicks the user out if their session is no longer valid */
+async function rpc(fn, args) {
+    const { data, error } = await sb.rpc(fn, args);
+    if (error) {
+        if (error.message.includes('SESSION_EXPIRED')) {
+            alert(ERROR_TEXT.SESSION_EXPIRED);
+            toLoginScreen();
+        }
+        throw error;
+    }
+    return data;
+}
+
+/* ---------- Theme ---------- */
+function applyTheme() {
+    document.body.classList.toggle('theme-dark', currentTheme === 'dark');
+    document.body.classList.toggle('theme-light', currentTheme !== 'dark');
+    $('themeToggleBtn').innerText = currentTheme === 'dark' ? '☀️' : '🌙';
+    safeSet('fcro_theme', currentTheme);
+}
+function toggleTheme() { currentTheme = currentTheme === 'dark' ? 'light' : 'dark'; applyTheme(); }
+
+/* ---------- Login / roles ---------- */
+async function handleLogin(e) {
+    e.preventDefault();
+    const btn = $('loginBtn'), err = $('loginError');
+    err.classList.add('hidden');
+    btn.disabled = true; btn.innerText = 'Checking...';
+    try {
+        const me = await sb.rpc('login', { p_username: $('loginUsername').value, p_password: $('loginPassword').value });
+        if (me.error) throw me.error;
+        session = me.data;
+        safeSet('fcro_session', JSON.stringify(session));
+        $('loginPassword').value = '';
+        showApp();
+    } catch (ex) {
+        err.innerText = errText(ex);
+        err.classList.remove('hidden');
+        replay($('loginScreen').firstElementChild, 'shake');
+    }
+    btn.disabled = false; btn.innerText = 'Authenticate';
+}
+
+function enterAsVisitor() {
+    session = { role: 'visitor' };
+    safeSet('fcro_session', JSON.stringify(session));
+    showApp();
+}
+
+async function handleLogout() {
+    if (session && session.token) {
+        try { await sb.rpc('logout', { p_token: session.token }); } catch (e) {}
+    }
+    toLoginScreen();
+}
+
+function toLoginScreen() {
+    session = null;
+    safeSet('fcro_session', null);
+    clearInterval(heartbeatTimer); clearInterval(accountsTimer);
+    $('appContainer').classList.add('hidden');
+    $('loginScreen').classList.remove('hidden');
+    document.body.classList.remove('can-edit', 'is-admin');
+}
+
+function showApp() {
+    $('loginScreen').classList.add('hidden');
+    $('appContainer').classList.remove('hidden');
+    document.body.classList.toggle('can-edit', canEdit());
+    document.body.classList.toggle('is-admin', isAdmin());
+
+    if (session.role === 'visitor') {
+        $('roleLabel').innerText = 'Visitor';
+        $('roleLabel').className = 'text-[9px] font-bold block uppercase tracking-widest text-ios-yellow';
+        $('userLabel').innerText = 'View only';
+        $('logoutLabel').innerText = 'Exit';
+    } else {
+        $('roleLabel').innerText = session.role === 'admin' ? 'Administrator' : 'Head';
+        $('roleLabel').className = 'text-[9px] font-bold block uppercase tracking-widest ' + (session.role === 'admin' ? 'text-ios-pink' : 'text-ios-blue');
+        $('userLabel').innerText = session.display_name;
+        $('logoutLabel').innerText = 'Lock';
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = setInterval(heartbeat, 30000);
+    }
+    if (!isAdmin() && (currentTab === 'accounts' || currentTab === 'audit')) currentTab = 'events';
+    switchMainTab(currentTab);
+    switchSubTab('active');
+    renderMonthTabs();
+    loadEvents().then(animateRows);
+    startLive();
+}
+
+/* Keeps "online" status fresh and confirms the session is still valid */
+async function heartbeat() {
+    if (!session || !session.token) return;
+    try {
+        const me = await rpc('whoami', { p_token: session.token });
+        if (me.role !== session.role || me.display_name !== session.display_name) {
+            session = me;
+            safeSet('fcro_session', JSON.stringify(session));
+            showApp();
+        }
+    } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) heartbeat(); });
+
+/* ---------- Clock ---------- */
+function updateClock() {
+    $('clockText').innerText = new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+setInterval(updateClock, 1000);
+
+/* ---------- Live data ---------- */
+async function loadEvents() {
+    const { data, error } = await sb.from('events').select('*');
+    if (error) { setSyncStatus('Offline: ' + error.message); return; }
+    events = data;
+    const latest = events.reduce((m, e) => (!m || e.updated_at > m ? e.updated_at : m), null);
+    $('updatedText').innerText = latest ? fmtDateTime(latest) : '—';
+    setSyncStatus('🟢 Live');
+    renderTables();
+    renderAnalyticsBreakdown();
+}
+
+function scheduleReload() {
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => {
+        // don't redraw under someone typing in a note
+        const el = document.activeElement;
+        if (el && el.dataset && el.dataset.noteId) { scheduleReload(); return; }
+        loadEvents();
+    }, 300);
+}
+
+function startLive() {
+    if (liveChannel) return;
+    liveChannel = sb.channel('fcro-events')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, scheduleReload)
+        .subscribe(status => {
+            if (status === 'SUBSCRIBED') setSyncStatus('🟢 Live');
+            else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setSyncStatus('Reconnecting...');
+        });
+    setInterval(loadEvents, 60000); // safety net
+}
+
+/* ---------- Tabs ---------- */
+function switchMainTab(tab) {
+    currentTab = tab;
+    ['events', 'analytics', 'accounts', 'audit'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        const on = b.dataset.tab === tab;
+        b.classList.toggle('bg-ios-blue', on);
+        b.classList.toggle('text-white', on);
+        b.classList.toggle('shadow', on);
+        b.classList.toggle('text-white/70', !on);
+    });
+    $('eventActions').style.visibility = tab === 'events' ? 'visible' : 'hidden';
+    clearInterval(accountsTimer);
+    if (tab === 'analytics') renderAnalyticsBreakdown();
+    if (tab === 'accounts') { loadAccounts(); accountsTimer = setInterval(loadAccounts, 15000); }
+    if (tab === 'audit') loadAudit();
+}
+
+function switchSubTab(tab) {
+    const on = 'bg-white/20 text-white px-4 py-1.5 rounded-lg font-bold text-xs transition';
+    const off = 'text-white/70 hover:text-white px-4 py-1.5 rounded-lg font-bold text-xs transition';
+    $('activeSection').classList.toggle('hidden', tab !== 'active');
+    $('historySection').classList.toggle('hidden', tab !== 'history');
+    $('subTabActiveBtn').className = tab === 'active' ? on : off;
+    $('subTabHistoryBtn').className = tab === 'history' ? on : off;
+    animateRows();
+}
+
+function renderMonthTabs() {
+    const c = $('monthTabsContainer');
+    c.innerHTML = '';
+    MONTHS.forEach(m => {
+        const btn = document.createElement('button');
+        btn.className = `px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition uppercase tracking-wider ${m === currentMonth ? 'bg-ios-blue text-white shadow-md' : 'bg-white/10 text-white/70 hover:bg-white/20'}`;
+        btn.innerText = m;
+        btn.onclick = () => { currentMonth = m; renderMonthTabs(); renderTables(); animateRows(); };
+        c.appendChild(btn);
+    });
+}
+
+/* ---------- Events table ---------- */
+function parseDateValue(dateStr) {
+    if (!dateStr) return 9999;
+    const map = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+    const clean = dateStr.toLowerCase();
+    for (const m in map) {
+        if (clean.includes(m)) {
+            const day = clean.match(/\d+/);
+            return map[m] * 100 + (day ? parseInt(day[0]) : 1);
+        }
+    }
+    return 9999;
+}
+
+function monthEvents() {
+    return events.filter(e => e.month === currentMonth)
+        .sort((a, b) => (b.priority - a.priority) || (parseDateValue(a.date) - parseDateValue(b.date)));
+}
+
+function statusBadge(status) {
+    if (status === 'Posted') return '<span class="px-2.5 py-1 bg-ios-green/20 text-ios-green border border-ios-green/40 rounded-full text-[10px] font-bold">POSTED / DONE</span>';
+    if (status === 'Edited') return '<span class="px-2.5 py-1 bg-ios-teal/20 text-ios-teal border border-ios-teal/40 rounded-full text-[10px] font-bold">EDITED</span>';
+    return '<span class="px-2.5 py-1 bg-ios-orange/20 text-ios-orange border border-ios-orange/40 rounded-full text-[10px] font-bold">PENDING</span>';
+}
+
+function dutiesHtml(duties) {
+    const entries = Object.entries(duties || {});
+    if (!entries.length) return '<span class="text-white/60 italic">No functions assigned</span>';
+    return '<div class="space-y-1">' + entries.map(([fn, name]) =>
+        `<div class="text-[11px]"><strong class="text-ios-teal">${esc(fn)}:</strong> ${name ? esc(name) : '<span class="italic text-white/50">Unassigned</span>'}</div>`
+    ).join('') + '</div>';
+}
+
+function renderTables() {
+    const list = monthEvents();
+    let pending = 0, posted = 0;
+    const activeRows = [], historyRows = [];
+
+    list.forEach(ev => {
+        const isPosted = ev.status === 'Posted';
+        isPosted ? posted++ : pending++;
+        const priority = ev.priority ? '<span class="inline-block px-2 py-0.5 bg-ios-red/30 text-ios-red border border-ios-red/50 rounded-md text-[9px] font-extrabold uppercase mr-1">⭐ PRIORITY</span>' : '';
+        const highlight = ev.priority ? 'bg-ios-red/10 border-l-4 border-l-ios-red' : (isPosted ? 'opacity-60 bg-white/5' : '');
+        const desc = `<span class="whitespace-pre-line">${esc(ev.description)}</span>`;
+        const postTime = ev.post_time ? esc(ev.post_time.replace('T', ' ')) : '<span class="text-white/60 italic">Unscheduled</span>';
+        const noteCell = canEdit()
+            ? `<input type="text" value="${esc(ev.note)}" placeholder="Type note..." data-note-id="${ev.id}" onblur="updateNote('${ev.id}', this)" class="w-full bg-black/30 border border-transparent hover:border-white/20 focus:border-ios-teal rounded-lg px-2 py-1 text-xs outline-none transition text-white">`
+            : (ev.note ? esc(ev.note) : '<span class="text-white/60 italic">—</span>');
+
+        activeRows.push(`
+            <tr class="${highlight} transition">
+                <td class="py-3 px-4 font-mono font-bold border-r border-white/10 align-top">${esc(ev.date)}</td>
+                <td class="py-3 px-4 border-r border-white/10 align-top font-medium">${priority}${desc}</td>
+                <td class="py-3 px-4 border-r border-white/10 align-top">${dutiesHtml(ev.duties)}</td>
+                <td class="py-3 px-4 border-r border-white/10 align-top">${noteCell}</td>
+                <td class="py-3 px-4 border-r border-white/10 align-top font-mono text-[11px]">${postTime}</td>
+                <td class="py-3 px-4 text-center align-top">
+                    <div class="flex flex-col items-center gap-1">
+                        ${statusBadge(ev.status)}
+                        <button onclick="cycleStatus('${ev.id}')" class="editor-only text-[9px] text-ios-teal hover:underline mt-1 no-print">Cycle Status</button>
+                    </div>
+                </td>
+                <td class="py-3 px-2 text-center align-top no-print editor-only">
+                    <div class="flex items-center justify-center gap-2">
+                        <button onclick="editEvent('${ev.id}')" title="Edit Entry" class="text-sm">✏️</button>
+                        <button onclick="deleteEvent('${ev.id}')" title="Delete Entry" class="text-sm">🗑️</button>
+                    </div>
+                </td>
+            </tr>`);
+
+        if (isPosted) historyRows.push(`
+            <tr class="transition">
+                <td class="py-3 px-4 font-mono font-bold border-r border-white/10 align-top">${esc(ev.date)}</td>
+                <td class="py-3 px-4 border-r border-white/10 align-top font-medium">${priority}${desc}</td>
+                <td class="py-3 px-4 border-r border-white/10 align-top">${dutiesHtml(ev.duties)}</td>
+                <td class="py-3 px-4 border-r border-white/10 align-top">${ev.note ? esc(ev.note) : '<span class="text-white/60 italic">No notes</span>'}</td>
+                <td class="py-3 px-4 text-center align-top">${statusBadge(ev.status)}</td>
+                <td class="py-3 px-2 text-center align-top no-print editor-only">
+                    <button onclick="deleteEvent('${ev.id}')" title="Delete" class="text-sm">🗑️</button>
+                </td>
+            </tr>`);
+    });
+
+    const cols = canEdit() ? 7 : 6;
+    $('eventTableBody').innerHTML = activeRows.join('') ||
+        `<tr><td colspan="${cols}" class="py-10 text-center text-white/60 italic">No events scheduled for ${esc(currentMonth)}.</td></tr>`;
+    $('historyTableBody').innerHTML = historyRows.join('') ||
+        `<tr><td colspan="${cols}" class="py-10 text-center text-white/60 italic">No archived entries yet.</td></tr>`;
+    $('historyCount').innerText = posted;
+    $('metricActive').innerText = list.length;
+    $('metricPending').innerText = pending;
+    $('metricPosted').innerText = posted;
+    document.querySelectorAll('.metricMonth').forEach(el => el.innerText = currentMonth);
+    $('printMonthTitle').innerText = `FCRO Schedule — ${currentMonth}`;
+}
+
+function renderAnalyticsBreakdown() {
+    $('analyticsMonthlyBreakdown').innerHTML = MONTHS.map(m => {
+        const list = events.filter(e => e.month === m);
+        const done = list.filter(e => e.status === 'Posted').length;
+        return `<div class="p-3 rounded-2xl bg-black/30 border border-white/15 text-center text-white">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-white/70 block mb-1">${m}</span>
+            <span class="text-lg font-mono font-black block">${list.length} Events</span>
+            <span class="text-[9px] text-ios-green font-semibold block">${done} Completed</span>
+        </div>`;
+    }).join('');
+}
+
+/* ---------- Event editing (heads + admin) ---------- */
+async function writeEvent(payload) {
+    setSyncStatus('Saving...');
+    try {
+        await rpc('save_event', { p_token: session.token, p_event: payload });
+        await loadEvents();
+    } catch (e) {
+        setSyncStatus('Not saved');
+        alert('Could not save: ' + errText(e));
+    }
+}
+
+function updateNote(id, input) {
+    const ev = events.find(e => e.id === id);
+    if (!ev || ev.note === input.value) return;
+    ev.note = input.value;
+    writeEvent({ id, note: input.value });
+}
+
+function cycleStatus(id) {
+    const ev = events.find(e => e.id === id);
+    const order = ['Pending', 'Edited', 'Posted'];
+    writeEvent({ id, status: order[(order.indexOf(ev.status) + 1) % order.length] });
+}
+
+async function deleteEvent(id) {
+    if (!confirm('Are you sure you want to purge this event entry?')) return;
+    setSyncStatus('Saving...');
+    try {
+        await rpc('delete_event', { p_token: session.token, p_id: id });
+        await loadEvents();
+    } catch (e) { alert('Could not delete: ' + errText(e)); }
+}
+
+function renderFunctionCheckboxes(selected = {}) {
+    $('functionsContainer').innerHTML = AVAILABLE_FUNCTIONS.map((fn, i) => {
+        const on = selected[fn] !== undefined;
+        return `<div class="flex items-center gap-2 text-xs">
+            <label class="flex items-center gap-2 min-w-[140px] cursor-pointer">
+                <input type="checkbox" id="fnchk_${i}" ${on ? 'checked' : ''} onchange="toggleFunctionInput(${i})" class="rounded">
+                <span class="font-bold text-white">${fn}</span>
+            </label>
+            <input type="text" id="fnname_${i}" placeholder="Assigned duty name..." value="${on ? esc(selected[fn]) : ''}" ${on ? '' : 'disabled'} class="flex-1 bg-black/40 border border-white/20 rounded-xl px-3 py-1 text-xs text-white focus:outline-none focus:border-ios-teal ${on ? '' : 'opacity-40'}">
+        </div>`;
+    }).join('');
+}
+
+function toggleFunctionInput(i) {
+    const on = $('fnchk_' + i).checked, input = $('fnname_' + i);
+    input.disabled = !on;
+    input.classList.toggle('opacity-40', !on);
+    if (on) input.focus(); else input.value = '';
+}
+
+function openAddModal() {
+    $('eventModalTitle').innerText = `📌 Event Specification - ${currentMonth}`;
+    $('eventForm').reset();
+    $('eventId').value = '';
+    renderFunctionCheckboxes({});
+    openModal('eventModal');
+}
+
+function editEvent(id) {
+    const ev = events.find(e => e.id === id);
+    $('eventModalTitle').innerText = '✏️ Modify Event Specification';
+    $('eventId').value = ev.id;
+    $('eventDate').value = ev.date;
+    $('eventDesc').value = ev.description;
+    $('eventNote').value = ev.note || '';
+    $('eventPostTime').value = ev.post_time || '';
+    $('eventStatus').value = ev.status;
+    $('eventPriority').checked = !!ev.priority;
+    renderFunctionCheckboxes(ev.duties || {});
+    openModal('eventModal');
+}
+
+async function saveEvent(e) {
+    e.preventDefault();
+    const duties = {};
+    AVAILABLE_FUNCTIONS.forEach((fn, i) => { if ($('fnchk_' + i).checked) duties[fn] = $('fnname_' + i).value.trim(); });
+    const id = $('eventId').value;
+    const existing = id && events.find(x => x.id === id);
+    const payload = {
+        id: id || null,
+        month: existing ? existing.month : currentMonth,
+        date: $('eventDate').value.trim(),
+        description: $('eventDesc').value.trim(),
+        duties,
+        note: $('eventNote').value,
+        post_time: $('eventPostTime').value,
+        status: $('eventStatus').value,
+        priority: $('eventPriority').checked
+    };
+    closeModal('eventModal');
+    await writeEvent(payload);
+}
+
+function openImportModal() { $('importRawData').value = ''; openModal('importModal'); }
+
+async function processImport() {
+    const raw = $('importRawData').value.trim();
+    closeModal('importModal');
+    if (!raw) return;
+    let added = 0;
+    setSyncStatus('Importing...');
+    for (const row of raw.split('\n')) {
+        const cols = row.split(/\t|,/).map(c => c.trim());
+        if (cols.length < 2 || !cols[1]) continue;
+        const dutyStr = cols[2] || '';
+        const duties = {};
+        if (dutyStr) {
+            AVAILABLE_FUNCTIONS.forEach(fn => { if (dutyStr.toUpperCase().includes(fn)) duties[fn] = dutyStr; });
+            if (!Object.keys(duties).length) duties.GENERAL = dutyStr;
+        }
+        try {
+            await rpc('save_event', { p_token: session.token, p_event: {
+                month: currentMonth, date: cols[0] || 'TBA', description: cols[1], duties,
+                note: cols[3] || '', post_time: '', status: 'Pending', priority: false
+            } });
+            added++;
+        } catch (e) { alert('Import stopped: ' + errText(e)); break; }
+    }
+    await loadEvents();
+    alert(`Import successful: ${added} event entries added to ${currentMonth}!`);
+}
+
+/* ---------- Own password ---------- */
+function openPasswordModal() {
+    $('pwOld').value = ''; $('pwNew').value = '';
+    $('pwMsg').classList.add('hidden');
+    openModal('passwordModal');
+}
+
+async function changeMyPassword(e) {
+    e.preventDefault();
+    const msg = $('pwMsg');
+    try {
+        await rpc('change_my_password', { p_token: session.token, p_old: $('pwOld').value, p_new: $('pwNew').value });
+        msg.className = 'text-xs text-ios-green'; msg.innerText = 'Password updated.';
+        setTimeout(() => closeModal('passwordModal'), 900);
+    } catch (ex) {
+        msg.className = 'text-xs text-ios-red'; msg.innerText = errText(ex);
+    }
+}
+
+/* ---------- Admin: accounts ---------- */
+async function loadAccounts() {
+    try {
+        accounts = await rpc('admin_list_accounts', { p_token: session.token });
+        renderAccounts();
+    } catch (e) {}
+}
+
+function renderAccounts() {
+    $('accountCount').innerText = accounts.length;
+    $('onlineCount').innerText = accounts.filter(a => a.online).length;
+    $('accountsTableBody').innerHTML = accounts.map(a => {
+        const status = a.online
+            ? '<span class="inline-flex items-center gap-1.5 text-ios-green font-bold"><span class="w-2 h-2 rounded-full bg-ios-green animate-pulse"></span>Online now</span>'
+            : a.last_seen
+                ? `<span class="inline-flex items-center gap-1.5 text-white/70"><span class="w-2 h-2 rounded-full bg-white/30"></span>Last online ${timeAgo(a.last_seen)}</span>
+                   <span class="block text-[10px] text-white/50 ml-3.5">${fmtDateTime(a.last_seen)}</span>`
+                : '<span class="text-white/50 italic">Never logged in</span>';
+        const role = a.role === 'admin'
+            ? '<span class="px-2 py-0.5 bg-ios-pink/20 text-ios-pink border border-ios-pink/40 rounded-full text-[10px] font-bold">ADMIN</span>'
+            : '<span class="px-2 py-0.5 bg-ios-blue/20 text-ios-blue border border-ios-blue/40 rounded-full text-[10px] font-bold">HEAD</span>';
+        const access = a.active
+            ? '<span class="text-ios-green font-bold">Enabled</span>'
+            : '<span class="text-ios-red font-bold">Disabled</span>';
+        const isMe = a.username === session.username;
+        return `<tr class="${a.active ? '' : 'opacity-50'}">
+            <td class="py-3 px-4 border-r border-white/10 font-semibold">${esc(a.display_name)}${isMe ? ' <span class="text-[10px] text-ios-teal">(you)</span>' : ''}</td>
+            <td class="py-3 px-4 border-r border-white/10 font-mono">${esc(a.username)}</td>
+            <td class="py-3 px-4 border-r border-white/10">${role}</td>
+            <td class="py-3 px-4 border-r border-white/10">${status}</td>
+            <td class="py-3 px-4 border-r border-white/10 text-center">${access}</td>
+            <td class="py-3 px-2 text-center">
+                <div class="flex items-center justify-center gap-2">
+                    <button onclick="openAccountModal('${a.id}')" title="Edit" class="text-sm">✏️</button>
+                    ${isMe ? '' : `<button onclick="deleteAccount('${a.id}')" title="Delete" class="text-sm">🗑️</button>`}
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function openAccountModal(id) {
+    const a = id ? accounts.find(x => x.id === id) : null;
+    $('accountModalTitle').innerText = a ? '✏️ Edit Account' : '➕ New Account';
+    $('accId').value = a ? a.id : '';
+    $('accName').value = a ? a.display_name : '';
+    $('accUsername').value = a ? a.username : '';
+    $('accPassword').value = '';
+    $('accPassword').placeholder = a ? 'New password (optional)' : 'Password';
+    $('accPassword').required = !a;
+    $('accPasswordHint').classList.toggle('hidden', !a);
+    $('accRole').value = a ? a.role : 'head';
+    $('accActive').checked = a ? a.active : true;
+    $('accError').classList.add('hidden');
+    openModal('accountModal');
+}
+
+async function saveAccount(e) {
+    e.preventDefault();
+    try {
+        await rpc('admin_save_account', {
+            p_token: session.token,
+            p_id: $('accId').value || null,
+            p_username: $('accUsername').value,
+            p_display_name: $('accName').value.trim(),
+            p_password: $('accPassword').value || null,
+            p_role: $('accRole').value,
+            p_active: $('accActive').checked
+        });
+        closeModal('accountModal');
+        loadAccounts();
+    } catch (ex) {
+        $('accError').innerText = errText(ex);
+        $('accError').classList.remove('hidden');
+    }
+}
+
+async function deleteAccount(id) {
+    const a = accounts.find(x => x.id === id);
+    if (!confirm(`Delete the account "${a.username}" (${a.display_name})? They will no longer be able to log in.`)) return;
+    try {
+        await rpc('admin_delete_account', { p_token: session.token, p_id: id });
+        loadAccounts();
+    } catch (ex) { alert(errText(ex)); }
+}
+
+/* ---------- Admin: audit log ---------- */
+async function loadAudit() {
+    try {
+        auditRows = await rpc('admin_audit_log', { p_token: session.token, p_limit: 500 });
+        renderAudit();
+    } catch (e) {}
+}
+
+const FIELD_LABELS = { month: 'Month', date: 'Date', description: 'Event', duties: 'Duties', note: 'Note', post_time: 'Post time', status: 'Status', priority: 'Priority' };
+
+function fmtVal(v) {
+    if (v === null || v === undefined || v === '') return '<i class="text-white/50">empty</i>';
+    if (typeof v === 'object') {
+        const parts = Object.entries(v).map(([k, x]) => `${esc(k)}: ${esc(x || '—')}`);
+        return parts.length ? parts.join(', ') : '<i class="text-white/50">none</i>';
+    }
+    return esc(v);
+}
+
+function auditDetails(row) {
+    const d = row.details || {};
+    if (row.action === 'EDIT EVENT' && d.before && d.after) {
+        const lines = Object.keys(FIELD_LABELS)
+            .filter(k => JSON.stringify(d.before[k]) !== JSON.stringify(d.after[k]))
+            .map(k => `<div><b class="text-ios-teal">${FIELD_LABELS[k]}:</b> <span class="line-through text-ios-red/80">${fmtVal(d.before[k])}</span> → <span class="text-ios-green">${fmtVal(d.after[k])}</span></div>`);
+        return lines.join('') || '<i class="text-white/50">no visible change</i>';
+    }
+    if (row.action === 'ADD EVENT' && d.after) {
+        return `<div><b class="text-ios-teal">Month:</b> ${esc(d.after.month)}</div><div><b class="text-ios-teal">Duties:</b> ${fmtVal(d.after.duties)}</div>`;
+    }
+    if (row.action === 'DELETE EVENT' && d.before) {
+        return `<div><b class="text-ios-teal">Month:</b> ${esc(d.before.month)} · <b class="text-ios-teal">Status:</b> ${esc(d.before.status)}</div>`;
+    }
+    if (row.action === 'EDIT ACCOUNT') {
+        const lines = Object.entries(d).map(([k, v]) => Array.isArray(v)
+            ? `<div><b class="text-ios-teal">${esc(k)}:</b> ${esc(v[0])} → ${esc(v[1])}</div>`
+            : `<div><b class="text-ios-teal">${esc(k)}:</b> ${esc(v)}</div>`);
+        return lines.join('') || '<i class="text-white/50">no change</i>';
+    }
+    if (row.action === 'ADD ACCOUNT' || row.action === 'DELETE ACCOUNT') {
+        return `${esc(d.display_name || '')} · ${esc((d.role || '').toUpperCase())}`;
+    }
+    return '';
+}
+
+const ACTION_STYLE = {
+    'ADD EVENT': 'text-ios-green', 'EDIT EVENT': 'text-ios-teal', 'DELETE EVENT': 'text-ios-red',
+    'ADD ACCOUNT': 'text-ios-green', 'EDIT ACCOUNT': 'text-ios-indigo', 'DELETE ACCOUNT': 'text-ios-red',
+    'LOGIN': 'text-white/60', 'LOGOUT': 'text-white/60', 'CHANGE PASSWORD': 'text-ios-orange'
+};
+
+function renderAudit() {
+    const q = $('auditSearch').value.trim().toLowerCase();
+    const f = $('auditFilter').value;
+    const rows = auditRows.filter(r =>
+        (!f || r.action.includes(f)) &&
+        (!q || [r.actor, r.action, r.target].join(' ').toLowerCase().includes(q)));
+    $('auditTableBody').innerHTML = rows.map(r => `
+        <tr>
+            <td class="py-3 px-4 border-r border-white/10 align-top font-mono text-[11px]">${fmtDateTime(r.at)}<span class="block text-white/50">${timeAgo(r.at)}</span></td>
+            <td class="py-3 px-4 border-r border-white/10 align-top font-bold">${esc(r.actor)}</td>
+            <td class="py-3 px-4 border-r border-white/10 align-top font-bold ${ACTION_STYLE[r.action] || ''}">${esc(r.action)}</td>
+            <td class="py-3 px-4 border-r border-white/10 align-top">${esc(r.target || '')}</td>
+            <td class="py-3 px-4 align-top text-[11px] space-y-0.5">${auditDetails(r)}</td>
+        </tr>`).join('') ||
+        '<tr><td colspan="5" class="py-10 text-center text-white/60 italic">No activity found.</td></tr>';
+}
+
+/* ---------- PDF export ---------- */
+function exportToPDF() {
+    const title = $('printMonthTitle');
+    title.classList.remove('hidden');
+    html2pdf().from($('printableArea')).set({
+        margin: 10,
+        filename: `FCRO_${currentMonth}_Schedule.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, ignoreElements: el => el.classList && el.classList.contains('no-print') },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    }).save().then(() => title.classList.add('hidden'));
+}
+
+/* ---------- Start ---------- */
+applyTheme();
+updateClock();
+(async function boot() {
+    let saved = null;
+    try { saved = JSON.parse(safeGet('fcro_session')); } catch (e) {}
+    if (!saved) return;
+    if (saved.role === 'visitor') { session = saved; showApp(); return; }
+    try {
+        const { data, error } = await sb.rpc('whoami', { p_token: saved.token });
+        if (error) throw error;
+        session = data;
+        safeSet('fcro_session', JSON.stringify(session));
+        showApp();
+    } catch (e) {
+        safeSet('fcro_session', null);
+    }
+})();
+    </script>
+</body>
+</html>
